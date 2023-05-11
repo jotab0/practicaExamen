@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 import Text.Show.Functions ()
 
 --A. Concediendo deseos
@@ -31,6 +33,12 @@ listaNeedForSpeed n
     | n < 10 = ("Saber jugar Need for speed " ++ numeroToString n) : listaNeedForSpeed (n+1)
     | otherwise = []
 
+nfs :: String
+nfs = "Saber jugar Need for speed "
+
+lista2NeedForSpeed :: Show a => [a] -> [[Char]]
+lista2NeedForSpeed n = map (\a -> nfs ++ numeroToString a) n
+
 numeroToString :: Show a => a -> String
 numeroToString = show
 
@@ -40,8 +48,11 @@ serMayor chico = chico {edad = 18}
 
 --2
 
-concederDeseos :: Chico -> Chico
-concederDeseos chico = last (mapearFunciones (deseos chico) chico)
+concederDeseosR :: Chico -> Chico
+concederDeseosR chico = last (mapearFunciones (deseos chico) chico)
+
+concederDeseosNR :: Chico -> Chico
+concederDeseosNR chico = last (map (\f -> f chico) (deseos chico))
 
 concederUnicoDeseo :: Chico -> Chico
 concederUnicoDeseo chico = head (mapearFunciones (deseos chico) chico)
@@ -58,7 +69,7 @@ wanda :: Chico -> Chico
 wanda chico = alterarEdad 1 (concederUnicoDeseo chico)
 
 wanda2 :: Chico -> Chico
-wanda2 (Chico nombre ed hab d) = (alterarEdad 1.concederDeseos) (Chico nombre ed hab [head d]) -- no le suma los 2 años porque luego de sumar aplica el deseo y lo deja con 18
+wanda2 (Chico nombre ed hab d) = (alterarEdad 1.concederDeseosR) (Chico nombre ed hab [head d]) -- no le suma los 2 años porque luego de sumar aplica el deseo y lo deja con 18
 
 --cosmo: dado un chico, lo hace “des”madurar, quedando con la mitad de años de edad. Como es olvidadizo, no le concede ningún deseo.
 cosmo :: Chico -> Chico
@@ -66,7 +77,7 @@ cosmo chico = chico {edad = div (edad chico) 2}
 
 --muffinMagico: dado un chico le concede todos sus deseos.
 muffinMagico :: Chico -> Chico
-muffinMagico = concederDeseos
+muffinMagico = concederDeseosR
 
 --B. En busqueda de pareja
 
@@ -79,11 +90,13 @@ data Chica = Chica {
 --a. tieneHabilidad unaHabilidad unChico: Dado un chico y una habilidad, dice
 --si la posee.
 
+tieneHabilidad :: String -> Chico -> Bool
 tieneHabilidad habilidad chico = habilidad `elem` habilidades chico
 
 --b. esSuperMaduro: Dado un chico dice si es mayor de edad (es decir, tiene más
 --de 18 años) y además sabe manejar.
 
+esSuperMaduro :: Chico -> Bool
 esSuperMaduro chico = edad chico > 18 && elem "manejar" (habilidades chico)
 
 --2.
@@ -94,5 +107,16 @@ esSuperMaduro chico = edad chico > 18 && elem "manejar" (habilidades chico)
 
 noEsTimmy :: Chico -> Bool
 noEsTimmy chico = nombre chico /= "Timmy" 
+
 trixie :: Chica
 trixie = Chica "Trixie" noEsTimmy
+vicky :: Chica
+vicky = Chica "Vicky" (tieneHabilidad "ser un supermodelo noruego")
+
+--quienConquistaA unaChica losPretendientes: Dada una chica y una lista
+--de pretendientes, devuelve al que se queda con la chica, es decir, el primero
+--que cumpla con la condición que ella quiere. Si no hay ninguno que la cumpla,
+--devuelve el último pretendiente (una chica nunca se queda sola). (Sólo en este
+--punto se puede usar recursividad)
+--b. Dar un ejemplo de consulta para una nueva chica, cuya condición para elegir a
+--un chico es que este sepa cocinar.
