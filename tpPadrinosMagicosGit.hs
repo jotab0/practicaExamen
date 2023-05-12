@@ -29,15 +29,13 @@ serGrosoEnNeedForSpeed :: Chico -> Chico
 serGrosoEnNeedForSpeed = aprenderHabilidades (listaNeedForSpeed 1)
 
 listaNeedForSpeed :: (Ord t, Num t, Show t) => t -> [[Char]]
-listaNeedForSpeed n
-    | n < 10 = ("Saber jugar Need for speed " ++ numeroToString n) : listaNeedForSpeed (n+1)
-    | otherwise = []
+listaNeedForSpeed n = ("Saber jugar Need for speed " ++ numeroToString n) : listaNeedForSpeed (n+1)
 
 nfs :: String
 nfs = "Saber jugar Need for speed "
 
 lista2NeedForSpeed :: Show a => [a] -> [[Char]]
-lista2NeedForSpeed n = map (\a -> nfs ++ numeroToString a) n
+lista2NeedForSpeed lista = map (\a -> nfs ++ numeroToString a) lista
 
 numeroToString :: Show a => a -> String
 numeroToString = show
@@ -53,7 +51,7 @@ concederDeseosR :: Chico -> Chico
 concederDeseosR chico = last (mapearFunciones (deseos chico) chico)
 
 concederDeseosNR :: Chico -> Chico
-concederDeseosNR chico = last (map (\f -> f chico) (deseos chico))
+concederDeseosNR chico = (last.map (\f -> f chico)) (deseos chico)
 
 concederDeseosNR2 :: Chico -> Chico
 concederDeseosNR2 chico = last (map (mapearFuncionesNR chico) (deseos chico))
@@ -79,6 +77,14 @@ concederDeseoBienR chico = last (aplicarFuncAcum (deseos chico) chico)
 concederUnicoDeseoBienR :: Chico -> Chico
 concederUnicoDeseoBienR chico = last (aplicarFuncAcum (deseos chico) chico)
 
+-- ASÍ SE HACE SIN RECURSIVIDAD
+
+aplicarFunciones :: Foldable t => b -> t (b -> b) -> b
+aplicarFunciones valor funciones = foldr ($) valor funciones
+
+concederDeseoBienNR :: Chico -> Chico
+concederDeseoBienNR chico = aplicarFunciones chico (deseos chico)
+--
 alterarEdad :: Int -> Chico -> Chico
 alterarEdad n chico = chico {edad = edad chico + n }
 
@@ -181,4 +187,5 @@ Indicar donde se utilizó y para qué:
 ● listas infinitas: dar ejemplos de consultas que funcionen y que no, donde aparezcan
 estas listas
 -}
+
 
