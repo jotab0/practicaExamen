@@ -1,5 +1,4 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Eta reduce" #-}
+
 import Text.Show.Functions ()
 
 --A. Concediendo deseos
@@ -16,7 +15,8 @@ roman :: Chico
 roman = Chico "Roman" 10 ["teletransportacion"] [serMayor]
 claudio :: Chico
 claudio = Chico "Claudio" 5 ["Decir 100 palabras por segundo"] [serMayor, aprenderHabilidades ["volar","memorizar"]]
-
+chad :: Chico
+chad = Chico "Chad" 12 ["ser un supermodelo noruego", "enamorar"] [serMayor]
 --aprenderHabilidades habilidades unChico : agrega una lista de habilidadesnuevas a las que ya tiene el chico.
 aprenderHabilidades :: [String] -> Chico -> Chico
 aprenderHabilidades habilidadesNuevas unChico = unChico { habilidades = habilidades unChico ++ habilidadesNuevas }
@@ -48,11 +48,15 @@ serMayor chico = chico {edad = 18}
 
 --2
 
+-- ESTAN MAL PORQUE NO ACUMULAN LOS DESEOS EN EL CHICO
 concederDeseosR :: Chico -> Chico
 concederDeseosR chico = last (mapearFunciones (deseos chico) chico)
 
 concederDeseosNR :: Chico -> Chico
 concederDeseosNR chico = last (map (\f -> f chico) (deseos chico))
+
+concederDeseosNR2 :: Chico -> Chico
+concederDeseosNR2 chico = last (map (mapearFuncionesNR chico) (deseos chico))
 
 concederUnicoDeseo :: Chico -> Chico
 concederUnicoDeseo chico = head (mapearFunciones (deseos chico) chico)
@@ -60,6 +64,20 @@ concederUnicoDeseo chico = head (mapearFunciones (deseos chico) chico)
 mapearFunciones :: [t -> a] -> t -> [a]
 mapearFunciones (f:fs) x = f x : mapearFunciones fs x
 mapearFunciones [] _ = []
+
+mapearFuncionesNR :: t1 -> (t1 -> t2) -> t2
+mapearFuncionesNR x f = f x
+--
+
+aplicarFuncAcum :: [t -> t] -> t -> [t]
+aplicarFuncAcum (f:fs) x = f x : mapearFunciones fs (f x)
+aplicarFuncAcum [] _ = []
+
+concederDeseoBienR :: Chico -> Chico
+concederDeseoBienR chico = last (aplicarFuncAcum (deseos chico) chico)
+
+concederUnicoDeseoBienR :: Chico -> Chico
+concederUnicoDeseoBienR chico = last (aplicarFuncAcum (deseos chico) chico)
 
 alterarEdad :: Int -> Chico -> Chico
 alterarEdad n chico = chico {edad = edad chico + n }
@@ -77,7 +95,7 @@ cosmo chico = chico {edad = div (edad chico) 2}
 
 --muffinMagico: dado un chico le concede todos sus deseos.
 muffinMagico :: Chico -> Chico
-muffinMagico = concederDeseosR
+muffinMagico = concederDeseoBienR
 
 --B. En busqueda de pareja
 
@@ -106,7 +124,7 @@ esSuperMaduro chico = edad chico > 18 && elem "manejar" (habilidades chico)
 --vicky = Chica “Vicky” (tieneHabilidad “ser un supermodelo noruego”)
 
 noEsTimmy :: Chico -> Bool
-noEsTimmy chico = nombre chico /= "Timmy" 
+noEsTimmy chico = nombre chico /= "Timmy"
 
 trixie :: Chica
 trixie = Chica "Trixie" noEsTimmy
@@ -120,3 +138,47 @@ vicky = Chica "Vicky" (tieneHabilidad "ser un supermodelo noruego")
 --punto se puede usar recursividad)
 --b. Dar un ejemplo de consulta para una nueva chica, cuya condición para elegir a
 --un chico es que este sepa cocinar.
+
+pretendientes :: [Chico]
+pretendientes = [roman, claudio, chad]
+
+quienConquistaA :: Chica -> [Chico] -> Chico
+quienConquistaA chica lista
+    |   any (condicion chica) lista = head (filter (condicion chica) lista)
+    |   otherwise = last lista
+
+catalina :: Chica
+catalina = Chica "Catalina" (tieneHabilidad "saber cocinar")
+
+{-C. Da Rules
+Como no todo está permitido en el mundo mágico, Jorgen
+Von Strángulo está encargado de controlar que no se
+viole lo establecido en “da Rules”:
+1. infractoresDeDaRules : Dada una lista de
+chicos, devuelve la lista de los nombres de
+aquellos que tienen deseos prohibidos. Un deseo
+está prohibido si, al aplicarlo, entre las
+cinco primeras habilidades, hay alguna prohibida.
+En tanto, son habilidades prohibidas enamorar,
+matar y dominar el mundo.-}
+
+habilidadesProhibidas :: [String]
+habilidadesProhibidas = ["enamorar","matar","dominar el mundo"]
+
+esInfractor :: Chico -> Bool
+esInfractor chico = any (algunaHabProh (take 5 (habilidades chico))) habilidadesProhibidas
+algunaHabProh :: (Foldable t, Eq a) => t a -> a -> Bool
+algunaHabProh lista a = a `elem` lista
+infractoresDeDaRules :: [Chico] -> [String]
+infractoresDeDaRules lista = map nombre (filter esInfractor lista)
+
+{-
+D. Justificaciones
+Indicar donde se utilizó y para qué:
+● la función composición
+● funciones de orden superior (creadas)
+● aplicación parcial
+● listas infinitas: dar ejemplos de consultas que funcionen y que no, donde aparezcan
+estas listas
+-}
+
