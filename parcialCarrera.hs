@@ -169,6 +169,8 @@ tuplarPosiciones :: [Auto] -> [Auto] -> [(Int, String)]
 tuplarPosiciones (x:xs) lista = (puesto (color x) lista, color x) : tuplarPosiciones xs lista
 tuplarPosiciones [] _ = []
 
-seguirCarrera :: [Auto] -> [[Auto] -> [Auto]] -> [[(Int, String)]]
-seguirCarrera lista eventos = aplicarListaDeFAArgs (map tuplarPosiciones (simularCarrera lista eventos)) (simularCarrera lista eventos)
+seguirCarrera :: [Auto] -> [Carrera -> Carrera] -> [[(Int, String)]]
+seguirCarrera listaAutos listaDeEventos =  aplicarListaDeFAArgs (map tuplarPosiciones (simularCarrera listaAutos listaDeEventos)) (simularCarrera listaAutos listaDeEventos)
 
+listaTuplas :: [Auto] -> [Carrera -> Carrera] -> [(Int, String)]
+listaTuplas listaAutos listaDeEventos = concat (seguirCarrera listaAutos listaDeEventos)
