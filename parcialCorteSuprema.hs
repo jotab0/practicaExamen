@@ -1,4 +1,5 @@
 
+
 import Text.Show.Functions ()
 
 -- PARTE 1
@@ -13,10 +14,10 @@ A la ley de profesionalización del tenista de mesa, con un presupuesto de 1 uni
 También hay una ley sobre tenis, apoyada por la liga de deportistas autónomos, con un presupuesto de 2.
 -}
 
-data Ley = Ley { tema :: String, presupuesto :: Int, apoyo :: [String]}
+data Ley = Ley { tema :: String, presupuesto :: Int, apoyo :: [String]} deriving Show
 
-leyes :: [Ley]
-leyes = [leyCannabis, leyEducacionSuperior, leyTenisMesa, leyTenis]
+conjuntoLeyes :: [Ley]
+conjuntoLeyes = [leyCannabis, leyEducacionSuperior, leyTenisMesa, leyTenis]
 
 leyCannabis :: Ley
 leyCannabis =  Ley "Uso medicinal del cannabis" 5 ["Cambio de todos", "Sector financiero"]
@@ -62,3 +63,94 @@ quitarCaracter ley = ley {tema = drop 1 (tema ley)}
 
 sonCompatibles :: Ley -> Ley -> Bool
 sonCompatibles ley1 ley2 = hayTemaEnComun ley1 ley2 || hayTemaEnComun ley2 ley1 && sectorEnComun ley1 ley2
+
+{-
+Constitucionalidad de las leyes
+La legislación vigente establece que son 5 los jueces que integran la Corte Suprema, 
+pero previendo posibles cambios que puedan suceder contemplaremos la posibilidad de que 
+la cantidad de integrantes sea diferente.  Es tarea de la corte establecer si una determinada 
+ley es constitucional o no. Para ello, cada juez vota de acuerdo a sus principios, experiencia,
+intereses o como le dé la gana, y si resultan mayoritarios los votos negativos, 
+la ley se declara inconstitucional. En estos casos, ningún juez de la corte puede 
+abstenerse o votar en blanco. 
+De los jueces no nos interesa saber su información personal, 
+su patrimonio ni su autopercepción, sino simplemente como votan.
+
+Algunos de ellos son:
+Uno de los jueces se basa en la opinión pública: si el tema de la ley está en agenda, 
+seguro que la declara constitucional. (Se conoce el conjunto de temas en agenda, 
+que es único para todos)
+Otro de los jueces, cuando se entera que la ley fue apoyada por el sector financiero, 
+es imposible que la declare inconstitucional.
+Hay un juez muy preocupado por las arcas del estado que declara inconstitucionales las 
+leyes que requieren un presupuesto de más de 10 unidades. Existe otro juez con mentalidad 
+similar pero un poco más tolerante que las declara inconstitucional recién si superan las 
+20 unidades de presupuesto.
+Y el último de los jueces actuales decide declarar constitucional a toda ley que 
+haya sido apoyada por el partido conservador
+-}
+
+type Principios = Ley -> Bool
+type Juez = Principios
+
+data CorteSuprema = CorteSuprema {
+    jueces :: [Juez],
+    agenda :: [String]
+}
+
+corteSuprema :: CorteSuprema
+corteSuprema = CorteSuprema juecesCorte (map tema conjuntoLeyes)
+
+juecesCorte :: [Juez]
+juecesCorte = [juezOpinionPublica, juezAntiSectorFinanciero, juezRata, juezRata2, juezProSectorConservador]
+
+juezOpinionPublica :: Juez
+juezOpinionPublica ley = tema ley `elem` agenda corteSuprema
+
+juezAntiSectorFinanciero :: Juez
+juezAntiSectorFinanciero ley = "Sector Financiero" `notElem` apoyo ley
+
+juezRata :: Juez
+juezRata ley = presupuesto ley < 10
+
+juezRata2 :: Juez
+juezRata2 ley = presupuesto ley < 20
+
+juezProSectorConservador :: Juez
+juezProSectorConservador ley = "Partido Conservador" `elem` apoyo ley
+
+-- Hacer que una Corte Suprema determine si se considera constitucional o no una ley.
+
+esConstitucional :: [t1 -> Bool] -> t1 -> Bool
+esConstitucional jueces ley = fromIntegral (length (filter (aplicacInv ley) jueces)) - fromIntegral (length jueces) / 2 > 0 -- Uso fromIntegral para más precision
+
+{-
+Agregar nuevos jueces que puedan integran la corte suprema:
+Uno que siempre vote afirmativamente
+Un juez inventado, con lógica totalmente diferente (no trivial).
+Otro juez que también tenga preocupación presupuestaria pero con otro importe.
+-}
+
+juezSiSeñor :: Juez
+juezSiSeñor _ = True
+
+juezInventado :: Juez
+juezInventado ley = length (vocales ley) > 2
+
+vocales :: Ley -> [Char]
+vocales ley = filter (\c -> c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || 
+                            c == 'A' || c == 'E' || c == 'I' || c == 'O' || c == 'U') (tema ley)
+
+juezDespilfarrador :: Juez
+juezDespilfarrador ley = presupuesto ley > 100
+
+{-
+Hacer una función que dada una serie de leyes, averigue cuáles que no serían consideradas constitucionales 
+con la actual conformación de la corte sí lo serían en caso de agregarle un conjunto de nuevos integrantes. 
+-}
+
+nuevosJuecesCorte :: [Juez]
+nuevosJuecesCorte = [juezOpinionPublica, juezAntiSectorFinanciero, juezRata, juezRata2, juezProSectorConservador, juezInventado, juezSiSeñor, juezDespilfarrador]
+
+ahoraSi :: [a] -> [a -> Bool] -> [a -> Bool] -> [a]
+ahoraSi leyes viejosJueces nuevosJueces = filter (esConstitucional nuevosJueces) (filter (not.esConstitucional viejosJueces) leyes)
