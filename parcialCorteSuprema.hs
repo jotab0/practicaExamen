@@ -3,7 +3,6 @@
 import Text.Show.Functions ()
 
 -- PARTE 1
-
 {-
 Las leyes
 El Congreso de la Nación sanciona diferentes leyes cada año, algunas más extensas o importantes que otras, pero en particular más que el detalle de su articulado nos interesa conocer cierta información clave, como ser el tema que trata, el presupuesto que requiere su implementación y cuáles son los partidos políticos, grupos de poder u otros sectores que la impulsaron o la apoyan. 
@@ -17,7 +16,7 @@ También hay una ley sobre tenis, apoyada por la liga de deportistas autónomos,
 data Ley = Ley { tema :: String, presupuesto :: Int, apoyo :: [String]} deriving Show
 
 conjuntoLeyes :: [Ley]
-conjuntoLeyes = [leyCannabis, leyEducacionSuperior, leyTenisMesa, leyTenis]
+conjuntoLeyes = [leyCannabis, leyEducacionSuperior, leyTenisMesa, leyTenis, leyAhoraSi]
 
 leyCannabis :: Ley
 leyCannabis =  Ley "Uso medicinal del cannabis" 5 ["Cambio de todos", "Sector financiero"]
@@ -64,6 +63,7 @@ quitarCaracter ley = ley {tema = drop 1 (tema ley)}
 sonCompatibles :: Ley -> Ley -> Bool
 sonCompatibles ley1 ley2 = hayTemaEnComun ley1 ley2 || hayTemaEnComun ley2 ley1 && sectorEnComun ley1 ley2
 
+-- PARTE 2
 {-
 Constitucionalidad de las leyes
 La legislación vigente establece que son 5 los jueces que integran la Corte Suprema, 
@@ -125,7 +125,7 @@ esConstitucional :: [t1 -> Bool] -> t1 -> Bool
 esConstitucional jueces ley = fromIntegral (length (filter (aplicacInv ley) jueces)) - fromIntegral (length jueces) / 2 > 0 -- Uso fromIntegral para más precision
 
 {-
-Agregar nuevos jueces que puedan integran la corte suprema:
+Agregar nuevos jueces que puedan integrar la corte suprema:
 Uno que siempre vote afirmativamente
 Un juez inventado, con lógica totalmente diferente (no trivial).
 Otro juez que también tenga preocupación presupuestaria pero con otro importe.
@@ -138,7 +138,7 @@ juezInventado :: Juez
 juezInventado ley = length (vocales ley) > 2
 
 vocales :: Ley -> [Char]
-vocales ley = filter (\c -> c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || 
+vocales ley = filter (\c -> c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' ||
                             c == 'A' || c == 'E' || c == 'I' || c == 'O' || c == 'U') (tema ley)
 
 juezDespilfarrador :: Juez
@@ -154,3 +154,31 @@ nuevosJuecesCorte = [juezOpinionPublica, juezAntiSectorFinanciero, juezRata, jue
 
 ahoraSi :: [a] -> [a -> Bool] -> [a -> Bool] -> [a]
 ahoraSi leyes viejosJueces nuevosJueces = filter (esConstitucional nuevosJueces) (filter (not.esConstitucional viejosJueces) leyes)
+
+leyAhoraSi :: Ley
+leyAhoraSi = Ley "Ahora siii" 120 ["Sector Progresista"]
+
+-- PARTE 3
+{-
+Cuestión de principios 
+A veces pasa que a los jueces les pasan cosas, 
+se sospecha de su independencia o de pronto cambian el sentido de su voto. 
+-}
+
+{-
+Hacer la función borocotizar, que dada una conformación de la Corte Suprema pasen a votar de forma 
+contraria a lo que votaban antes.
+-}
+
+borocotizar :: [a -> Bool] -> [a -> Bool]
+borocotizar = map (not .)
+
+{-
+Determinar si un juez curiosamente coincide en su posición con un sector social, que se da cuando de 
+un conjunto dado de leyes actualmente en tratamiento, sólo vota las que son apoyadas por dicho sector.
+-}
+
+intereses :: (Ley -> Bool) -> [Ley] -> Bool
+intereses juez leyes = (and.map ((head.concatMap apoyo) (filter juez leyes) ==)) (concatMap apoyo (filter juez leyes))
+
+
