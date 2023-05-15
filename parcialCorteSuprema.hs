@@ -37,7 +37,7 @@ aplicacInv :: t1 -> (t1 -> t2) -> t2
 aplicacInv x f = f x
 
 sectorEnComun :: Ley -> Ley -> Bool
-sectorEnComun ley1 ley2 = or (map (aplicacInv (apoyo ley2)) (map elem (apoyo ley1)))
+sectorEnComun ley1 ley2 = or (map ($ apoyo ley2) (map elem (apoyo ley1)))
 
 -- SECTOR EN COMUN RECURSIVA
 
@@ -61,7 +61,7 @@ quitarCaracter :: Ley -> Ley
 quitarCaracter ley = ley {tema = drop 1 (tema ley)}
 
 sonCompatibles :: Ley -> Ley -> Bool
-sonCompatibles ley1 ley2 = hayTemaEnComun ley1 ley2 || hayTemaEnComun ley2 ley1 && sectorEnComun ley1 ley2
+sonCompatibles ley1 ley2 = hayTemaEnComun ley2 ley1 && sectorEnComun ley1 ley2
 
 -- PARTE 2
 {-
@@ -122,7 +122,7 @@ juezProSectorConservador ley = "Partido Conservador" `elem` apoyo ley
 -- Hacer que una Corte Suprema determine si se considera constitucional o no una ley.
 
 esConstitucional :: [t1 -> Bool] -> t1 -> Bool
-esConstitucional jueces ley = fromIntegral (length (filter (aplicacInv ley) jueces)) - fromIntegral (length jueces) / 2 > 0 -- Uso fromIntegral para más precision
+esConstitucional jueces ley = fromIntegral (length (filter ($ ley) jueces)) - fromIntegral (length jueces) / 2 > 0 -- Uso fromIntegral para más precision
 
 {-
 Agregar nuevos jueces que puedan integrar la corte suprema:
@@ -180,5 +180,13 @@ un conjunto dado de leyes actualmente en tratamiento, sólo vota las que son apo
 
 intereses :: (Ley -> Bool) -> [Ley] -> Bool
 intereses juez leyes = (and.map ((head.concatMap apoyo) (filter juez leyes) ==)) (concatMap apoyo (filter juez leyes))
+-- Lo que hace esta funcion es filtrar las leyes que el juez aprobaria (que al aplicarlas al juez devuelven true) 
+-- y liego concatena la lista con listas de los sectores que apoyan cada ley aprobada. Luego se repite lo mismo
+-- pero se toma la cabeza de esta lista con los sectores que apoyan la ley. Luego si esta cabeza es igual
+-- a todos los elementos de la lista que contiene a todos los sectores que apoyan a sus respectivas leyes,
+-- quiere decir que solo hay un sector, por lo tanto hay interes.
 
+-- Para entender un poco más sobre filter: 
 
+-- map ($ 3) (filter ($ 2) [(<5),(2<)]) = [True] -> osea que filter me esta devolviendo las funciones que aplicadas
+-- al argumento que le pasa ($ 2) son verdaderas

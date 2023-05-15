@@ -26,10 +26,10 @@ estaCerca auto1 auto2 = (color auto1 /= color auto2) && 100 > abs (distancia aut
 distanciaEsMayor :: Auto -> Auto -> Bool
 distanciaEsMayor auto1 auto2 = distancia auto1 > distancia auto2
 
-distanciaEsMenor :: Auto -> Auto -> Bool
-distanciaEsMenor auto1 auto2
+segundoArgumentoVaAdelante :: Auto -> Auto -> Bool
+segundoArgumentoVaAdelante auto1 auto2
   | distancia auto1 < distancia auto2 = True
-  | distancia auto1 == distancia auto2 && velocidad auto1 /= velocidad auto2 = distanciaEsMenor (transformarVelocEnPosic auto1) (transformarVelocEnPosic auto2)
+  | distancia auto1 == distancia auto2 && velocidad auto1 /= velocidad auto2 = segundoArgumentoVaAdelante (transformarVelocEnPosic auto1) (transformarVelocEnPosic auto2)
   | otherwise = False
 
 transformarVelocEnPosic :: Auto -> Auto
@@ -40,17 +40,20 @@ noEsMimsoAuto auto1 auto2 = color auto1 /= color auto2
 
 vaTranquilo :: Auto -> Bool
 vaTranquilo auto
-  = (and.map not) (map (estaCerca auto) carrera) && and (map (distanciaEsMayor auto) (filter (noEsMimsoAuto auto) carrera))
+  = and (map (not . estaCerca auto) carrera) && and (map (distanciaEsMayor auto) (filter (noEsMimsoAuto auto) carrera))
 
 puesto :: String -> [Auto] -> Int
 puesto col lista
-  = 1 + length (filter (distanciaEsMenor (head (filter (\auto -> color auto == col) lista))) lista)
+  = 1 + length (filter (segundoArgumentoVaAdelante (head (filter (\auto -> color auto == col) lista))) lista)
 
 autoDeColor :: String -> Auto -> Bool
 autoDeColor col auto = color auto == col
 
 filtrarAutoDeColor :: String -> [Auto] -> Auto
 filtrarAutoDeColor col = head.filter  (autoDeColor col)
+
+filtrarAutoDeColor2 :: String -> [Auto] -> [Auto] -- Para cuando quiera filtrar auto por color pero dejarlo en lista (sirve para powerups)
+filtrarAutoDeColor2 col = filter  (autoDeColor col)
 
 puesto2 :: String -> [Auto] -> Int
 puesto2 col lista = length lista - length (filter (distanciaEsMayor (filtrarAutoDeColor col lista)) lista)
@@ -83,7 +86,7 @@ terremoto auto = (map (bajarVelocidad 50).filter (estaCerca auto)) carrera ++ fi
 -- Sin querer hice la funcion anterior pero no genérica
 
 terremoto2 :: String -> [Auto] -> [Auto]
-terremoto2 col lista = (map (bajarVelocidad 50).filter (estaCerca (head (filter (\auto -> color auto == col) lista)))) lista ++ filter (not.estaCerca (head (filter (\auto -> color auto == col) lista))) lista
+terremoto2 col lista = (map (bajarVelocidad 50).filter (estaCerca (head (filtrarAutoDeColor2 col lista)))) lista ++ filter (not.estaCerca (head (filter (\auto -> color auto == col) lista))) lista
 
 terremoto3 :: String -> [Auto] -> [Auto]
 terremoto3 col lista = (map (bajarVelocidad 50).filter (estaCerca (filtrarAutoDeColor col lista))) lista ++ filter (not.estaCerca (filtrarAutoDeColor col lista)) lista
@@ -96,7 +99,7 @@ terremotoV2 auto = afectarALosQueCumplen (estaCerca auto) (\autof -> autof { vel
 -} -- Esta funcion está mal porque para que después los efectos sean acumulativos, debe recibir una lista y no aplicar los efectos a carrera.
 
 terremotoV22 :: String -> [Auto] -> [Auto]
-terremotoV22 col lista = afectarALosQueCumplen (estaCerca (filtrarAutoDeColor col lista)) (\autof -> autof { velocidad = velocidad autof - 50}) lista
+terremotoV22 col lista = afectarALosQueCumplen (estaCerca (filtrarAutoDeColor col lista)) (bajarVelocidad 50) lista
 
 -- MIGUELITOS
 {-
@@ -120,6 +123,9 @@ jetPack n auto = map (correrAutoJetpack n) (filter (auto ==) carrera) ++ filter 
 -}
 jetPack2 :: Int -> String -> [Auto] -> [Auto]
 jetPack2 n col lista = map (correrAutoJetpack n) (filter (\auto -> color auto == col) lista) ++ filter (\auto -> color auto /= col) lista
+
+jetPack22 :: Int -> String -> [Auto] -> [Auto]
+jetPack22 n col lista = map (correrAutoJetpack n) (filtrarAutoDeColor2 col lista) ++ filter (\auto -> color auto /= col) lista
 
 {-
 NOTA IMPORTANTE: Las funciones deben recibir el color del auto (funciona como identificador) porque
@@ -145,32 +151,47 @@ listaEventos :: [[Auto] -> [Auto]]
 listaEventos = [map (correrAuto 30), jetPack2 3 "azul", terremoto2 "blanco",map (correrAuto 40), miguelitos3 20 "blanco" ,jetPack2 6 "azul",map (correrAuto 10)]
 
 listaEventos2 :: [[Auto] -> [Auto]]
-listaEventos2 = 
-  [correnTodos 30, 
-  usaPowerup (jetPack2 3) "azul", 
-  usaPowerup terremoto2 "blanco", 
-  correnTodos 40, 
-  usaPowerup (miguelitos3 20) "blanco", 
-  usaPowerup (jetPack2 6) "azul", 
+listaEventos2 =
+  [correnTodos 30,
+  usaPowerup (jetPack2 3) "azul",
+  usaPowerup terremoto2 "blanco",
+  correnTodos 40,
+  usaPowerup (miguelitos3 20) "blanco",
+  usaPowerup (jetPack2 6) "azul",
   correnTodos 10]
 
-simularCarrera :: t -> [t -> t] -> [t]
-simularCarrera _ [] = []
-simularCarrera listaAutos (f:fs) = listaAutos : simularCarrera (f listaAutos) fs
+simularCarreraPasoAPaso :: t -> [t -> t] -> [t]
+simularCarreraPasoAPaso listaAutos [] = [listaAutos]
+simularCarreraPasoAPaso listaAutos (f:fs) = listaAutos : simularCarreraPasoAPaso (f listaAutos) fs
 
+simularCarreraPasoAPaso2 :: t -> [t -> t] -> [t]
+simularCarreraPasoAPaso2 listaAutos [] = [listaAutos]
+simularCarreraPasoAPaso2 listaAutos listaDeEventos = head (map ($ listaAutos) listaDeEventos) : simularCarreraPasoAPaso2 (head(map ($ listaAutos) listaDeEventos)) (drop 1 listaDeEventos)
 
 aplicarListaDeFAArgs :: [t -> a] -> [t] -> [a]
 aplicarListaDeFAArgs [] _ = []
 aplicarListaDeFAArgs _ [] = []
 aplicarListaDeFAArgs (f:fs) (x:xs) = f x : aplicarListaDeFAArgs fs xs
 
-
 tuplarPosiciones :: [Auto] -> [Auto] -> [(Int, String)]
 tuplarPosiciones (x:xs) lista = (puesto (color x) lista, color x) : tuplarPosiciones xs lista
 tuplarPosiciones [] _ = []
 
 seguirCarrera :: [Auto] -> [Carrera -> Carrera] -> [[(Int, String)]]
-seguirCarrera listaAutos listaDeEventos =  aplicarListaDeFAArgs (map tuplarPosiciones (simularCarrera listaAutos listaDeEventos)) (simularCarrera listaAutos listaDeEventos)
+seguirCarrera listaAutos listaDeEventos =  aplicarListaDeFAArgs (map tuplarPosiciones (simularCarreraPasoAPaso listaAutos listaDeEventos)) (simularCarreraPasoAPaso2 listaAutos listaDeEventos)
 
 listaTuplas :: [Auto] -> [Carrera -> Carrera] -> [(Int, String)]
 listaTuplas listaAutos listaDeEventos = concat (seguirCarrera listaAutos listaDeEventos)
+
+finCarrera :: Foldable t => t (b -> b) -> b -> b -- Solo da el estado final de la carrera
+finCarrera listaDeEventos listaAutos = foldl (flip ($)) listaAutos listaDeEventos -- listaAutos $ evento1 $ evento2
+
+{-
+NOTAS
+
+- Cuando voy a tener que aplicar funciones acumulativas a elementos en particular, voy a tener que tener
+identificadores en el data
+
+- Se puede usar argumento recibido en funcion como argumento en una lambda dentro de esa función
+
+-}

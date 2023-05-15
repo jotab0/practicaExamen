@@ -31,7 +31,8 @@ rafa = Jugador "Rafa" "Gorgory" (Habilidad 10 1)
 data Tiro = Tiro {
   velocidad :: Float,
   precision ::  Float,
-  altura :: Float
+  altura :: Float,
+  superaObstaculo :: Bool
 } deriving (Eq, Show)
 
 type Puntos = Int
@@ -40,8 +41,10 @@ type Puntos = Int
 between :: (Eq a, Enum a) => a -> a -> a -> Bool
 between n m x = x `elem` [n .. m]
 
-maximoSegun :: (Foldable t, Ord a1) => (a2 -> a1) -> t a2 -> a2
-maximoSegun f = foldl1 (mayorSegunF f)
+maximoSegun :: (Foldable t, Ord a1, Num a2) => (a2 -> a1) -> t a2 -> a2
+maximoSegun f lista = foldl (mayorSegunF f) 0 lista -- (0 (mayorSegun f) 1) (mayorSegun f) 2 (mayorSegun f) 3
+-- En este caso no hace falta flip porque no importa como ingresa a y b,
+-- porque son argumentos, el tema es cuando hay funciones
 
 mayorSegunF :: Ord a => (t -> a) -> t -> t -> t
 mayorSegunF f a b
@@ -68,30 +71,36 @@ y una altura de n-3 (con mínimo 0). Modelarlos de la forma más genérica posib
 
 -- PARA MÍ VA A SER MEJOR CON TYPE
 
+data Palo1 = Palo1 {
+    habilidadRecibida :: Habilidad,
+    tiro :: Tiro
+}
 
-data Palo = Palo {
-    tiro :: Tiro,
-    nombrePalo :: String
-} deriving (Eq, Show)
+putter1 :: Habilidad -> Palo1
+putter1 hab = Palo1 hab (Tiro 10 (precisionJugador hab * 2) 0 True)
 
-putter :: Habilidad -> Palo
-putter hab = Palo {
-    tiro = Tiro 10 (precisionJugador hab * 2) 0,
-    nombrePalo = "putter"
-    }
+madera1 :: Habilidad -> Palo1
+madera1 hab = Palo1 hab (Tiro 100 (precisionJugador hab / 2) 5 True)
+--
+-- CON TYPE
 
-madera :: Habilidad -> Palo
-madera hab = Palo (Tiro 100 (precisionJugador hab / 2) 5) "madera"
+type Palo = (Habilidad -> Tiro)
 
-hierro :: Float -> Habilidad -> Palo
-hierro n hab = Palo (Tiro (fuerzaJugador hab * n) (precisionJugador hab / n) (n-3)) ("hierro " ++ show n)
+putter :: Palo
+putter hab = Tiro 10 (precisionJugador hab * 2) 0 True
+
+madera :: Palo
+madera hab = Tiro 100 (precisionJugador hab / 2) 5 True
+
+hierro :: Float -> Palo
+hierro n hab = Tiro (fuerzaJugador hab * n) (precisionJugador hab / n) (n-3) True
 
 {-
 Definir una constante palos que sea una lista 
 con todos los palos que se pueden usar en el juego.
 -}
 
-palos :: [Habilidad -> Palo]
+palos :: [Palo]
 palos = [putter, madera, hierro 1, hierro 2, hierro 3, hierro 4, hierro 5,
          hierro 6, hierro 7, hierro 8, hierro 9, hierro 10]
 
@@ -102,11 +111,8 @@ Por ejemplo:
 Si Bart usa un putter, se genera un tiro de velocidad = 10, precisión = 120 y altura = 0.
 -}
 
-golpe :: Jugador -> (Habilidad -> t) -> t
+golpe :: Jugador -> Palo -> Tiro
 golpe persona palo = palo (habilidad persona)
-
-golpe1 :: Jugador -> (Habilidad -> Palo) -> Tiro
-golpe1 persona palo = (tiro.palo) (habilidad persona)
 
 {-
 Lo que nos interesa de los distintos obstáculos es si un tiro puede superarlo, 
@@ -133,15 +139,15 @@ la precisión pasa a ser 100 y la altura 0
 -}
 
 ponerA0 :: Tiro -> Tiro
-ponerA0 tiro = tiro {velocidad = 0, precision = 0, altura = 0}
+ponerA0 tiro = tiro {velocidad = 0, precision = 0, altura = 0, superaObstaculo = False}
 
-tiroSuperaRampita :: Palo -> Bool
-tiroSuperaRampita palo = precision (tiro palo) > 90 && altura (tiro palo) == 0
+tiroSuperaRampita :: Tiro -> Bool
+tiroSuperaRampita tiro = precision tiro > 90 && altura tiro == 0
 
-tunelConRampita :: Palo -> Tiro
-tunelConRampita palo
-    | tiroSuperaRampita palo = (tiro palo) {velocidad = velocidad (tiro palo) * 2, precision = 100}
-    | otherwise = ponerA0 (tiro palo)
+tunelConRampita :: Tiro -> Tiro
+tunelConRampita tiro
+    | tiroSuperaRampita tiro && superaObstaculo tiro = tiro {velocidad = velocidad tiro * 2, precision = 100}
+    | otherwise = ponerA0 tiro
 
 {-
 Una laguna es superada si la velocidad del tiro es mayor a 80 y 
@@ -150,13 +156,13 @@ llega con la misma velocidad y precisión, pero una altura equivalente a la altu
 original dividida por el largo de la laguna.
 -}
 
-tiroSuperaLaguna :: Palo -> Bool
-tiroSuperaLaguna palo = velocidad (tiro palo) > 80 &&  (altura (tiro palo) < 5 && altura (tiro palo) > 1)
+tiroSuperaLaguna :: Tiro -> Bool
+tiroSuperaLaguna tiro = velocidad tiro > 80 &&  (altura tiro < 5 && altura tiro > 1)
 
-laguna :: Float -> Palo -> Tiro
-laguna largoLaguna palo
-    | tiroSuperaLaguna palo = (tiro palo) {altura = altura (tiro palo) / largoLaguna}
-    | otherwise = ponerA0 (tiro palo)
+laguna :: Float -> Tiro -> Tiro
+laguna largoLaguna tiro
+    | tiroSuperaLaguna tiro && superaObstaculo tiro = tiro {altura = altura tiro / largoLaguna}
+    | otherwise = ponerA0 tiro
 
 {-
 Un hoyo se supera si la velocidad del tiro está entre 5 y 20 m/s yendo al ras del suelo 
@@ -164,13 +170,13 @@ con una precisión mayor a 95. Al superar el hoyo, el tiro se detiene, quedando 
 sus componentes en 0.
 -}
 
-tiroSuperaHoyo :: Palo -> Bool
-tiroSuperaHoyo palo = (velocidad (tiro palo) > 5 && velocidad (tiro palo) < 20) &&  altura (tiro palo) == 0 && precision (tiro palo) > 95
+tiroSuperaHoyo :: Tiro -> Bool
+tiroSuperaHoyo tiro = (velocidad tiro > 5 && velocidad tiro < 20) &&  altura tiro == 0 && precision tiro > 95
 
-hoyo :: Palo -> Tiro
-hoyo palo
-    | tiroSuperaHoyo palo = ponerA0 (tiro palo)
-    | otherwise = ponerA0 (tiro palo)
+hoyo :: Tiro -> Tiro
+hoyo tiro
+    | tiroSuperaHoyo tiro && superaObstaculo tiro = tiro {velocidad = 0, precision = 0, altura = 0, superaObstaculo = True}
+    | otherwise = ponerA0 tiro
 
 {-
 Definir palosUtiles que dada una persona y un obstáculo, 
@@ -191,19 +197,23 @@ Definir palosUtiles que dada una persona y un obstáculo,
 permita determinar qué palos le sirven para superarlo.
 -}
 
-palosUtiles :: Jugador -> (Palo -> Bool) -> [Habilidad -> Palo]
+palosUtiles :: Jugador -> (Tiro -> Bool) -> [Palo]
 palosUtiles persona obstaculo = filter (obstaculo.golpe persona) palos
-
-nombrePalosUtiles :: Jugador -> (Palo -> Bool) -> [String]
-nombrePalosUtiles persona obstaculo = map (nombrePalo . aplicacInv (habilidad persona)) (filter (obstaculo.golpe persona) palos)
 
 {-
 Saber, a partir de un conjunto de obstáculos y un tiro, 
 cuántos obstáculos consecutivos se pueden superar.
 -}
 
-obstaculosConsecutivos :: t1 -> [t1 -> Bool] -> Int
-obstaculosConsecutivos palo obstaculos = length (filter (aplicacInv palo) obstaculos)
+obstaculosConsecutivos :: t -> [t -> Tiro] -> Int
+obstaculosConsecutivos tiro obstaculos = length (recorrerHastaFalso tiro obstaculos)
+
+recorrerHastaFalso :: t -> [t -> Tiro] -> [Tiro]
+recorrerHastaFalso _ [] = []
+recorrerHastaFalso tiro (x:xs)
+  | superaObstaculo (x tiro) = x tiro : recorrerHastaFalso tiro xs
+  | otherwise = []
+
 aplicacInv :: t1 -> (t1 -> t2) -> t2
 aplicacInv x f  = f x
 
@@ -217,18 +227,11 @@ Definir paloMasUtil que recibe una persona y una lista de obstáculos
 y determina cuál es el palo que le permite superar más obstáculos con un solo tiro.
 -}
 
+maxTirosConsec :: Jugador -> [Tiro -> Tiro] -> Int
+maxTirosConsec persona obstaculos = maximum (map ($ obstaculos) (map obstaculosConsecutivos (map (golpe persona) palos)))
 
-obstaculosConsecutivos2 :: [t1 -> Bool] -> t1 -> Int
-obstaculosConsecutivos2 obstaculos tiro = length (filter (aplicacInv tiro) obstaculos)
-
-maxTirosConsec :: Jugador -> [Palo -> Bool] -> Int
-maxTirosConsec persona obstaculos = maximum (map (aplicacInv obstaculos) (map obstaculosConsecutivos (map (golpe persona) palos)))
-
-paloMasUtil :: Jugador -> [Palo -> Bool] -> [Habilidad -> Palo]
-paloMasUtil persona obstaculos = filter ((maxTirosConsec persona obstaculos <=).obstaculosConsecutivos2 obstaculos.golpe persona) palos
-
-nombrePaloMasUtil :: Jugador -> [Palo -> Bool] -> [String]
-nombrePaloMasUtil persona obstaculos = map (nombrePalo . aplicacInv (habilidad persona)) (paloMasUtil persona obstaculos)
+paloMasUtil :: Jugador -> [Tiro -> Tiro] -> [Palo]
+paloMasUtil persona obstaculos = filter ((maxTirosConsec persona obstaculos <=).flip obstaculosConsecutivos obstaculos.golpe persona) palos
 
 {-
 Dada una lista de tipo [(Jugador, Puntos)] que tiene la 
